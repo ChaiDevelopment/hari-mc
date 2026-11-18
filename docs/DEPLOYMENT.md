@@ -30,6 +30,15 @@ Pengunjung ──▶ Cloudflare (DNS, HTTPS, proteksi)
 | 6 | (Opsional) domain sendiri | Alamat profesional; bisa mulai dengan `*.workers.dev` |
 
 ## Langkah 1 — Database (Neon / Supabase)
+
+> **Supabase (dipakai proyek ini — sudah disiapkan 18 Nov 2026):**
+> - Gunakan **Session pooler** (IPv4), bukan host langsung `db.<ref>.supabase.co` (hanya IPv6):
+>   `postgresql://postgres.<PROJECT_REF>:<PASSWORD>@aws-1-ap-south-1.pooler.supabase.com:5432/postgres?schema=app&sslmode=require`
+>   (Host pooler bisa berbeda per project — salin dari Supabase → **Connect → Session pooler**.)
+> - Tabel aplikasi berada di **schema `app`**, bukan `public`. Data API Supabase hanya membuka `public`, jadi tabel aplikasi tidak bisa dibaca lewat REST API Supabase (`anon`/`authenticated` tidak punya akses).
+> - Aplikasi **tidak memakai** API key Supabase (`sb_secret_…` / `sb_publishable_…`), hanya koneksi PostgreSQL.
+> - Password, user, dan URL koneksi **hanya** diisi di environment hosting API — jangan di repo.
+
 1. Buat project PostgreSQL (versi 16/17), region terdekat (mis. Singapore).
 2. Salin **connection string** → dipakai sebagai `DATABASE_URL` API (tambahkan `?sslmode=require` bila belum ada).
 3. Migration dijalankan **otomatis** saat container API start (`RUN_MIGRATIONS=true`, default).

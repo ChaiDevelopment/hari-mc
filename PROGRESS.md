@@ -50,7 +50,9 @@ Product owner: Chai · Pemilik bisnis / admin: Hari Susanto
 - [x] **Keamanan IP di Workers**: proxy memakai `CF-Connecting-IP` sehingga rate limit tidak bisa diakali.
 - [x] **CI GitHub Actions** (test API + integrasi, build Workers, build Docker) di setiap push. **Deploy website hanya manual** (workflow *Deploy Web*).
 - [x] Panduan lengkap: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
-- ⏳ Menunggu: akun Cloudflare, database (Neon/Supabase), tempat API, SMTP — lalu deploy bersama.
+- [x] **Database produksi (Supabase, region ap-south-1) siap**: 2 migration diterapkan ke schema `app` (tidak terbuka lewat Data API Supabase), seed profil Hari + 7 kategori. Koneksi memakai Session pooler (IPv4). Belum ada admin, menunggu email Google Hari.
+  - ⚠️ Password database & secret key Supabase sempat dikirim lewat chat: **reset password database** dan **cabut secret key** (tidak dipakai aplikasi) setelah setup.
+- ⏳ Menunggu: tempat API (mis. Railway), Cloudflare (Workers + R2), SMTP — lalu deploy bersama.
 
 **Test terakhir:** API unit 45/45 · API integrasi 118/118 · web unit 10/10 · browser 60/60.
 
