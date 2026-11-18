@@ -1,0 +1,554 @@
+// Hari MC Booking — database schema (PostgreSQL 17)
+// Constraint yang tidak bisa diekspresikan Prisma (exclusion constraint anti double-booking,
+// partial unique index single-admin, CHECK constraints) ada di migration SQL — lihat docs/DATABASE.md.
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = []
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ───────────────────────────── Enums ─────────────────────────────
+
+enum UserRole {
+  CUSTOMER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum BookingStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  WAITING_PAYMENT
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  REFUNDED
+}
+
+enum ActorType {
+  CUSTOMER
+  ADMIN
+  SYSTEM
+}
+
+enum PaymentType {
+  DOWN_PAYMENT // DP
+  SETTLEMENT // Pelunasan
+  REFUND
+}
+
+enum PaymentMethod {
+  BANK_TRANSFER
+  CASH
+  E_WALLET
+  QRIS
+  PAYMENT_GATEWAY
+  OTHER
+}
+
+enum PaymentStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  REFUNDED
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+}
+
+enum DevicePlatform {
+  ANDROID
+  WEB
+}
+
+enum PushStatus {
+  NOT_REQUESTED
+  PENDING
+  SENT
+  FAILED
+  SKIPPED
+}
+
+enum ReviewSource {
+  GOOGLE
+}
+
+// ───────────────────────────── Identity ─────────────────────────────
+
+model User {
+  id          String     @id @default(uuid()) @db.Uuid
+  email       String     @unique // selalu lowercase
+  googleSub   String?    @unique @map("google_sub")
+  name        String
+  avatarUrl   String?    @map("avatar_url")
+  role        UserRole   @default(CUSTOMER)
+  status      UserStatus @default(ACTIVE)
+  lastLoginAt DateTime?  @map("last_login_at") @db.Timestamptz(3)
+  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime   @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt   DateTime?  @map("deleted_at") @db.Timestamptz(3)
+
+  customerProfile CustomerProfile?
+  adminProfile    AdminProfile?
+  refreshTokens   RefreshToken[]
+  bookings        Booking[]          @relation("BookingCustomer")
+  statusLogs      BookingStatusLog[]
+  notifications   Notification[]
+  deviceTokens    DeviceToken[]
+  auditLogs       AuditLog[]
+  paymentsRecorded Payment[]         @relation("PaymentRecordedBy")
+  paymentsVerified Payment[]         @relation("PaymentVerifiedBy")
+  paymentProofs   PaymentProof[]
+  attachments     BookingAttachment[]
+  settingsUpdated BusinessSetting[]
+
+  @@index([role])
+  @@index([name])
+  @@map("users")
+}
+
+model CustomerProfile {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @unique @map("user_id") @db.Uuid
+  whatsapp  String? // format E.164, mis. +6281234567890
+  city      String?
+  notes     String? // catatan internal admin
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([whatsapp])
+  @@map("customer_profiles")
+}
+
+model AdminProfile {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @unique @map("user_id") @db.Uuid
+  displayName String   @map("display_name")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("admin_profiles")
+}
+
+model RefreshToken {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  familyId     String    @map("family_id") @db.Uuid
+  tokenHash    String    @unique @map("token_hash") // SHA-256 hex; token mentah tidak pernah disimpan
+  expiresAt    DateTime  @map("expires_at") @db.Timestamptz(3)
+  usedAt       DateTime? @map("used_at") @db.Timestamptz(3)
+  replacedById String?   @unique @map("replaced_by_id") @db.Uuid
+  revokedAt    DateTime? @map("revoked_at") @db.Timestamptz(3)
+  revokeReason String?   @map("revoke_reason")
+  userAgent    String?   @map("user_agent")
+  ipAddress    String?   @map("ip_address")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  replacedBy RefreshToken? @relation("TokenRotation", fields: [replacedById], references: [id])
+  replaces   RefreshToken? @relation("TokenRotation")
+
+  @@index([userId])
+  @@index([familyId])
+  @@map("refresh_tokens")
+}
+
+/// Kode masuk sekali pakai via email (login/daftar tanpa password). Kode disimpan sebagai hash.
+model EmailLoginCode {
+  id         String    @id @default(uuid()) @db.Uuid
+  email      String // lowercase
+  codeHash   String    @map("code_hash")
+  attempts   Int       @default(0)
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(3)
+  consumedAt DateTime? @map("consumed_at") @db.Timestamptz(3)
+  ipAddress  String?   @map("ip_address")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@index([email, createdAt])
+  @@map("email_login_codes")
+}
+
+// ───────────────────────────── Business profile & catalogue ─────────────────────────────
+
+/// Satu baris saja: profil Hari Susanto.
+model McProfile {
+  id            String   @id @default(uuid()) @db.Uuid
+  singleton     Boolean  @unique @default(true) // menjamin hanya ada satu baris
+  displayName   String   @map("display_name")
+  businessName  String   @map("business_name")
+  tagline       String?
+  bio           String?
+  locationLabel String?  @map("location_label")
+  photoUrl      String?  @map("photo_url")
+  instagramUrl  String?  @map("instagram_url")
+  instagramHandle String? @map("instagram_handle")
+  googleMapsUrl String?  @map("google_maps_url")
+  whatsappNumber String? @map("whatsapp_number")
+  contactEmail  String?  @map("contact_email")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@map("mc_profile")
+}
+
+/// Kategori layanan / jenis acara (Ulang Tahun Anak, Sweet Seventeen, ...).
+model Service {
+  id          String    @id @default(uuid()) @db.Uuid
+  slug        String    @unique
+  name        String
+  description String?
+  isActive    Boolean   @default(true) @map("is_active")
+  sortOrder   Int       @default(0) @map("sort_order")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  packages ServicePackage[]
+  bookings Booking[]
+
+  @@map("services")
+}
+
+/// Paket jasa. Harga TIDAK di-seed — diisi Hari lewat CMS.
+model ServicePackage {
+  id              String    @id @default(uuid()) @db.Uuid
+  serviceId       String?   @map("service_id") @db.Uuid // null = berlaku untuk semua kategori
+  name            String
+  description     String?
+  durationMinutes Int       @map("duration_minutes")
+  price           Decimal   @db.Decimal(14, 2)
+  currency        String    @default("IDR") @db.Char(3)
+  facilities      String[]  @default([])
+  isActive        Boolean   @default(true) @map("is_active")
+  sortOrder       Int       @default(0) @map("sort_order")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  service  Service?  @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  bookings Booking[]
+
+  @@index([serviceId])
+  @@index([isActive])
+  @@map("service_packages")
+}
+
+// ───────────────────────────── Bookings ─────────────────────────────
+
+model Booking {
+  id             String        @id @default(uuid()) @db.Uuid
+  code           String        @unique // nomor booking untuk manusia, mis. HMC-261117-7KQ2M
+  customerId     String        @map("customer_id") @db.Uuid
+  serviceId      String        @map("service_id") @db.Uuid
+  packageId      String?       @map("package_id") @db.Uuid
+  status         BookingStatus @default(PENDING)
+  idempotencyKey String        @map("idempotency_key")
+
+  // Jadwal (disimpan UTC; timezone asli untuk tampilan)
+  eventStartAt DateTime @map("event_start_at") @db.Timestamptz(3)
+  eventEndAt   DateTime @map("event_end_at") @db.Timestamptz(3)
+  timezone     String   @default("Asia/Jakarta")
+
+  // Snapshot kontak saat booking
+  contactName     String @map("contact_name")
+  contactEmail    String @map("contact_email")
+  contactWhatsapp String @map("contact_whatsapp")
+
+  // Snapshot harga saat booking (tidak berubah walau paket diubah)
+  packageName       String?  @map("package_name")
+  packagePrice      Decimal  @default(0) @map("package_price") @db.Decimal(14, 2)
+  durationMinutes   Int?     @map("duration_minutes")
+  transportFee      Decimal  @default(0) @map("transport_fee") @db.Decimal(14, 2)
+  additionalFee     Decimal  @default(0) @map("additional_fee") @db.Decimal(14, 2)
+  additionalFeeNote String?  @map("additional_fee_note")
+  discountAmount    Decimal  @default(0) @map("discount_amount") @db.Decimal(14, 2)
+  totalAmount       Decimal  @default(0) @map("total_amount") @db.Decimal(14, 2)
+  depositAmount     Decimal  @default(0) @map("deposit_amount") @db.Decimal(14, 2)
+  currency          String   @default("IDR") @db.Char(3)
+
+  /// Jawaban untuk pertanyaan tambahan yang dikonfigurasi di business_settings.booking_form
+  formAnswers Json @default("{}") @map("form_answers")
+
+  privacyConsentAt   DateTime  @map("privacy_consent_at") @db.Timestamptz(3)
+  cancellationReason String?   @map("cancellation_reason")
+  rejectionReason    String?   @map("rejection_reason")
+
+  acceptedAt  DateTime? @map("accepted_at") @db.Timestamptz(3)
+  rejectedAt  DateTime? @map("rejected_at") @db.Timestamptz(3)
+  confirmedAt DateTime? @map("confirmed_at") @db.Timestamptz(3)
+  startedAt   DateTime? @map("started_at") @db.Timestamptz(3)
+  completedAt DateTime? @map("completed_at") @db.Timestamptz(3)
+  cancelledAt DateTime? @map("cancelled_at") @db.Timestamptz(3)
+  refundedAt  DateTime? @map("refunded_at") @db.Timestamptz(3)
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  customer     User                @relation("BookingCustomer", fields: [customerId], references: [id], onDelete: Restrict)
+  service      Service             @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  package      ServicePackage?     @relation(fields: [packageId], references: [id], onDelete: SetNull)
+  eventDetail  EventDetail?
+  statusLogs   BookingStatusLog[]
+  payments     Payment[]
+  attachments  BookingAttachment[]
+
+  @@unique([customerId, idempotencyKey])
+  @@index([status])
+  @@index([eventStartAt])
+  @@index([customerId, createdAt])
+  @@index([serviceId])
+  @@index([createdAt])
+  @@index([contactName])
+  @@map("bookings")
+}
+
+model EventDetail {
+  id                  String   @id @default(uuid()) @db.Uuid
+  bookingId           String   @unique @map("booking_id") @db.Uuid
+  eventName           String   @map("event_name")
+  venueName           String   @map("venue_name")
+  address             String
+  city                String
+  mapsUrl             String?  @map("maps_url")
+  guestCount          Int?     @map("guest_count")
+  concept             String?
+  language            String?
+  dressCode           String?  @map("dress_code")
+  rundown             String?
+  activityDescription String?  @map("activity_description")
+  specialRequests     String?  @map("special_requests")
+  additionalNotes     String?  @map("additional_notes")
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([city])
+  @@map("event_details")
+}
+
+model BookingStatusLog {
+  id          String         @id @default(uuid()) @db.Uuid
+  bookingId   String         @map("booking_id") @db.Uuid
+  fromStatus  BookingStatus? @map("from_status")
+  toStatus    BookingStatus  @map("to_status")
+  action      String // mis. SUBMIT, ACCEPT, REQUEST_CHANGES
+  actorType   ActorType      @map("actor_type")
+  actorUserId String?        @map("actor_user_id") @db.Uuid
+  note        String?
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  actor   User?   @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([bookingId, createdAt])
+  @@map("booking_status_logs")
+}
+
+/// File lampiran booking (rundown, referensi, dll.)
+model BookingAttachment {
+  id           String   @id @default(uuid()) @db.Uuid
+  bookingId    String   @map("booking_id") @db.Uuid
+  storageKey   String   @unique @map("storage_key")
+  fileName     String   @map("file_name")
+  mimeType     String   @map("mime_type")
+  sizeBytes    Int      @map("size_bytes")
+  uploadedById String?  @map("uploaded_by_id") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  booking    Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  uploadedBy User?   @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  @@index([bookingId])
+  @@map("booking_attachments")
+}
+
+// ───────────────────────────── Payments ─────────────────────────────
+
+model Payment {
+  id               String        @id @default(uuid()) @db.Uuid
+  code             String        @unique // mis. PAY-261117-XXXX
+  bookingId        String        @map("booking_id") @db.Uuid
+  type             PaymentType
+  method           PaymentMethod
+  amount           Decimal       @db.Decimal(14, 2)
+  currency         String        @default("IDR") @db.Char(3)
+  paidAt           DateTime      @map("paid_at") @db.Timestamptz(3)
+  status           PaymentStatus @default(PENDING)
+  notes            String?
+  recordedById     String?       @map("recorded_by_id") @db.Uuid
+  verifiedById     String?       @map("verified_by_id") @db.Uuid
+  verifiedAt       DateTime?     @map("verified_at") @db.Timestamptz(3)
+  // Disiapkan untuk payment gateway (Midtrans/Xendit) — belum aktif
+  gatewayProvider  String?       @map("gateway_provider")
+  gatewayReference String?       @map("gateway_reference")
+  createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  booking    Booking        @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  recordedBy User?          @relation("PaymentRecordedBy", fields: [recordedById], references: [id], onDelete: SetNull)
+  verifiedBy User?          @relation("PaymentVerifiedBy", fields: [verifiedById], references: [id], onDelete: SetNull)
+  proofs     PaymentProof[]
+
+  @@unique([gatewayProvider, gatewayReference])
+  @@index([bookingId])
+  @@index([status])
+  @@index([paidAt])
+  @@map("payments")
+}
+
+model PaymentProof {
+  id           String   @id @default(uuid()) @db.Uuid
+  paymentId    String   @map("payment_id") @db.Uuid
+  storageKey   String   @unique @map("storage_key")
+  fileName     String   @map("file_name")
+  mimeType     String   @map("mime_type")
+  sizeBytes    Int      @map("size_bytes")
+  uploadedById String?  @map("uploaded_by_id") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  payment    Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  uploadedBy User?   @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  @@index([paymentId])
+  @@map("payment_proofs")
+}
+
+// ───────────────────────────── Content ─────────────────────────────
+
+model Portfolio {
+  id           String    @id @default(uuid()) @db.Uuid
+  title        String?
+  caption      String?
+  mediaType    MediaType @map("media_type")
+  storageKey   String?   @unique @map("storage_key") // file yang di-upload
+  externalUrl  String?   @map("external_url") // mis. link YouTube/Instagram
+  thumbnailKey String?   @map("thumbnail_key")
+  mimeType     String?   @map("mime_type")
+  sizeBytes    Int?      @map("size_bytes")
+  sortOrder    Int       @default(0) @map("sort_order")
+  isActive     Boolean   @default(true) @map("is_active")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt    DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  @@index([isActive, sortOrder])
+  @@map("portfolios")
+}
+
+/// Cache berumur pendek untuk review dari Google Places API (New).
+/// Jangan diisi manual. Hormati kebijakan penyimpanan Google (lihat docs/ARCHITECTURE.md §6).
+model ExternalReview {
+  id              String       @id @default(uuid()) @db.Uuid
+  source          ReviewSource
+  placeId         String       @map("place_id")
+  externalId      String       @map("external_id") // resource name review dari API
+  authorName      String       @map("author_name")
+  authorUri       String?      @map("author_uri")
+  authorPhotoUri  String?      @map("author_photo_uri")
+  rating          Int
+  text            String?
+  languageCode    String?      @map("language_code")
+  publishTime     DateTime?    @map("publish_time") @db.Timestamptz(3)
+  relativeTime    String?      @map("relative_time")
+  fetchedAt       DateTime     @default(now()) @map("fetched_at") @db.Timestamptz(3)
+  expiresAt       DateTime     @map("expires_at") @db.Timestamptz(3)
+
+  @@unique([source, externalId])
+  @@index([placeId, expiresAt])
+  @@map("external_reviews")
+}
+
+// ───────────────────────────── Notifications ─────────────────────────────
+
+model Notification {
+  id         String     @id @default(uuid()) @db.Uuid
+  userId     String     @map("user_id") @db.Uuid
+  type       String // mis. BOOKING_SUBMITTED, BOOKING_ACCEPTED, ADMIN_NEW_BOOKING
+  title      String
+  body       String
+  data       Json       @default("{}")
+  /// Mencegah notifikasi ganda akibat retry/event duplikat: mis. "booking:<id>:ACCEPTED:<userId>"
+  dedupeKey  String     @unique @map("dedupe_key")
+  readAt     DateTime?  @map("read_at") @db.Timestamptz(3)
+  pushStatus PushStatus @default(NOT_REQUESTED) @map("push_status")
+  pushSentAt DateTime?  @map("push_sent_at") @db.Timestamptz(3)
+  pushError  String?    @map("push_error")
+  createdAt  DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@index([userId, createdAt])
+  @@map("notifications")
+}
+
+model DeviceToken {
+  id         String         @id @default(uuid()) @db.Uuid
+  userId     String         @map("user_id") @db.Uuid
+  token      String         @unique
+  platform   DevicePlatform
+  lastSeenAt DateTime       @default(now()) @map("last_seen_at") @db.Timestamptz(3)
+  revokedAt  DateTime?      @map("revoked_at") @db.Timestamptz(3)
+  createdAt  DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("device_tokens")
+}
+
+// ───────────────────────────── Settings & audit ─────────────────────────────
+
+/// Key-value settings yang bisa diubah admin (booking_form, google_reviews, booking_rules, payment_info, ...)
+model BusinessSetting {
+  id          String   @id @default(uuid()) @db.Uuid
+  key         String   @unique
+  value       Json
+  description String?
+  updatedById String?  @map("updated_by_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  updatedBy User? @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@map("business_settings")
+}
+
+model AuditLog {
+  id          String    @id @default(uuid()) @db.Uuid
+  actorUserId String?   @map("actor_user_id") @db.Uuid
+  actorType   ActorType @map("actor_type")
+  action      String // mis. AUTH_LOGIN, BOOKING_ACCEPT, AUTH_REFRESH_REUSE_DETECTED
+  entityType  String?   @map("entity_type")
+  entityId    String?   @map("entity_id")
+  metadata    Json      @default("{}")
+  ipAddress   String?   @map("ip_address")
+  userAgent   String?   @map("user_agent")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  actor User? @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId])
+  @@index([actorUserId, createdAt])
+  @@index([action, createdAt])
+  @@map("audit_logs")
+}

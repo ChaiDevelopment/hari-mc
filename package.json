@@ -1,0 +1,25 @@
+{
+  "name": "hari-mc-booking",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Hari MC Booking — platform pemesanan jasa MC Hari Susanto",
+  "packageManager": "pnpm@10.34.9",
+  "engines": {
+    "node": ">=20.11"
+  },
+  "scripts": {
+    "db:dev": "pnpm --filter @hmc/api db:dev",
+    "api:dev": "pnpm --filter @hmc/api start:dev",
+    "api:build": "pnpm --filter @hmc/api build",
+    "api:start": "pnpm --filter @hmc/api start",
+    "api:test": "pnpm --filter @hmc/api test",
+    "api:test:e2e": "pnpm --filter @hmc/api test:e2e",
+    "web:dev": "pnpm --filter @hmc/web dev",
+    "web:build": "pnpm --filter @hmc/web build",
+    "web:start": "pnpm --filter @hmc/web start",
+    "web:test": "pnpm --filter @hmc/web test",
+    "web:test:e2e": "pnpm --filter @hmc/api build && pnpm --filter @hmc/web build && pnpm --filter @hmc/web test:e2e",
+    "test:all": "pnpm api:test && pnpm api:test:e2e && pnpm web:test && pnpm web:test:e2e",
+    "build": "pnpm -r build"
+  }
+}

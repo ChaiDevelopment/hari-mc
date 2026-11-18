@@ -1,0 +1,160 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-navy-950: #0a1120;
+  --color-navy-900: #0e192c;
+  --color-navy-800: #15253f;
+  --color-navy-700: #213555;
+  --color-navy-600: #324c76;
+  --color-cream-50: #fdfbf7;
+  --color-cream-100: #f8f3ea;
+  --color-cream-200: #efe6d6;
+  --color-cream-300: #e2d5bd;
+  --color-gold-200: #f0e4c4;
+  --color-gold-300: #e4d0a0;
+  --color-gold-400: #d4b77c;
+  --color-gold-500: #c29f5f;
+  --color-gold-600: #a5834a;
+  --color-gold-700: #7f6437;
+  --color-ink: #17202f;
+  --color-muted: #5a6474;
+  --color-line: #e6dccb;
+
+  --font-display: var(--font-playfair), Georgia, 'Times New Roman', serif;
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+
+  --shadow-soft: 0 1px 2px rgb(14 25 44 / 0.04), 0 8px 24px -12px rgb(14 25 44 / 0.12);
+  --shadow-lift: 0 2px 4px rgb(14 25 44 / 0.06), 0 20px 40px -20px rgb(14 25 44 / 0.25);
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    background: var(--color-cream-50);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    background: var(--color-gold-300);
+    color: var(--color-navy-950);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-gold-500);
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  .eyebrow {
+    @apply text-[0.72rem] font-semibold tracking-[0.22em] uppercase text-gold-600;
+  }
+  .gold-rule {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--color-gold-500), transparent);
+  }
+  .hero-glow {
+    background:
+      radial-gradient(60rem 30rem at 85% -10%, rgb(194 159 95 / 0.22), transparent 60%),
+      radial-gradient(40rem 30rem at -10% 110%, rgb(50 76 118 / 0.55), transparent 60%),
+      var(--color-navy-950);
+  }
+  .field-input {
+    @apply w-full rounded-xl border border-line bg-white px-4 py-3 text-[0.95rem] text-ink shadow-[inset_0_1px_0_rgb(0_0_0/0.02)] transition placeholder:text-muted/60 focus:border-gold-500 focus:ring-4 focus:ring-gold-300/40 focus:outline-none disabled:bg-cream-100;
+  }
+  .field-input[aria-invalid='true'] {
+    @apply border-red-400 focus:border-red-500 focus:ring-red-200;
+  }
+}
+
+/* ───── FullCalendar: disesuaikan dengan identitas visual ───── */
+.hmc-calendar {
+  --fc-border-color: var(--color-line);
+  --fc-button-bg-color: #fff;
+  --fc-button-border-color: var(--color-line);
+  --fc-button-text-color: var(--color-navy-900);
+  --fc-button-hover-bg-color: var(--color-cream-100);
+  --fc-button-hover-border-color: var(--color-gold-400);
+  --fc-button-active-bg-color: var(--color-navy-900);
+  --fc-button-active-border-color: var(--color-navy-900);
+  --fc-today-bg-color: rgb(228 208 160 / 0.18);
+  --fc-now-indicator-color: var(--color-gold-600);
+  --fc-page-bg-color: #fff;
+  --fc-neutral-bg-color: var(--color-cream-100);
+  --fc-list-event-hover-bg-color: var(--color-cream-100);
+  font-size: 0.85rem;
+}
+.hmc-calendar .fc .fc-toolbar {
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.hmc-calendar .fc .fc-toolbar-title {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  color: var(--color-navy-900);
+}
+.hmc-calendar .fc .fc-button {
+  border-radius: 9999px;
+  font-weight: 600;
+  font-size: 0.8rem;
+  padding: 0.35rem 0.8rem;
+  box-shadow: none !important;
+}
+.hmc-calendar .fc .fc-button-primary:not(:disabled).fc-button-active {
+  color: var(--color-cream-50);
+}
+.hmc-calendar .fc-event {
+  border-width: 0 0 0 3px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.hmc-calendar .fc-event.hmc-tentative {
+  border-style: dashed;
+  border-width: 1px 1px 1px 3px;
+}
+.hmc-calendar .fc-event.hmc-conflict {
+  outline: 1px solid #dc2626;
+}
+.hmc-calendar .fc-bg-event.hmc-buffer {
+  opacity: 0.18;
+}
+@media (max-width: 640px) {
+  .hmc-calendar .fc .fc-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .hmc-calendar .fc .fc-toolbar-chunk {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-fade-up {
+  animation: fade-up 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
