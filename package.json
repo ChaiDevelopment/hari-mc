@@ -20,6 +20,8 @@
     "web:test": "pnpm --filter @hmc/web test",
     "web:test:e2e": "pnpm --filter @hmc/api build && pnpm --filter @hmc/web build && pnpm --filter @hmc/web test:e2e",
     "test:all": "pnpm api:test && pnpm api:test:e2e && pnpm web:test && pnpm web:test:e2e",
-    "build": "pnpm -r build"
+    "build": "pnpm -r build",
+    "cf:build": "pnpm --filter @hmc/web cf:build",
+    "cf:deploy": "pnpm --filter @hmc/web exec opennextjs-cloudflare deploy"
   }
 }

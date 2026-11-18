@@ -92,7 +92,14 @@ Cek: `GET https://<api>/api/v1/health` → `{"status":"ok","database":"up"}`.
 1. Ubah `vars.API_INTERNAL_URL` di `apps/web/wrangler.jsonc` ke URL API dari Langkah 3 (atau atur di dashboard Worker → Settings → Variables).
 2. Pilih salah satu:
    - **GitHub Actions (disarankan)**: GitHub repo → Settings → Secrets → tambah `CLOUDFLARE_API_TOKEN` (izin *Workers Scripts: Edit*) dan `CLOUDFLARE_ACCOUNT_ID` → Actions → **Deploy Web (Cloudflare Workers)** → *Run workflow*. Deploy hanya terjadi saat dijalankan manual.
-   - **Workers Builds (dashboard Cloudflare)**: Workers → Create → Import repository `ChaiDevelopment/hari-mc` → Root directory `apps/web` → Build command `pnpm install --frozen-lockfile && pnpm cf:build` → Deploy command `pnpm exec opennextjs-cloudflare deploy`.
+   - **Workers Builds (dashboard Cloudflare)** — Worker bernama `hari-mc` (harus sama dengan `name` di wrangler.jsonc). Settings → Build:
+     | Kolom | Isi |
+     |---|---|
+     | Root directory | `/` (root repo) |
+     | Build command | `pnpm cf:build` |
+     | Deploy command | `pnpm cf:deploy` |
+     | Variable | `NODE_VERSION=22` (opsional) |
+     Jangan memakai build command bawaan `pnpm run build`: itu ikut mem-build API (tidak dibutuhkan di Workers).
    - **Dari komputer Linux/WSL**: `pnpm --filter @hmc/web cf:deploy` (build OpenNext gagal di Windows tanpa Developer Mode karena butuh symlink).
 3. Hasil: `https://hari-mc.<akun>.workers.dev`.
 
