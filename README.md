@@ -8,7 +8,7 @@ Platform pemesanan jasa MC milik **Hari Susanto** (Jasa MC Ultah Kak Hari, Gambi
 | `apps/web` | Next.js 15 (website pelanggan + CMS `/admin`), Tailwind 4, FullCalendar 6 | Fase 2–3 selesai |
 | `apps/android` | Kotlin, Jetpack Compose, Material 3 | Fase 4 |
 
-Dokumentasi: [Progress](PROGRESS.md) · [Arsitektur](docs/ARCHITECTURE.md) · [Database](docs/DATABASE.md) · [Roadmap](docs/ROADMAP.md) · [Laporan Fase 1](docs/PHASE-1-REPORT.md) · [Laporan Fase 2](docs/PHASE-2-REPORT.md) · [Laporan Fase 3](docs/PHASE-3-REPORT.md) · [API](docs/API.md)
+Dokumentasi: [Progress](PROGRESS.md) · [Arsitektur](docs/ARCHITECTURE.md) · [Database](docs/DATABASE.md) · [Roadmap](docs/ROADMAP.md) · [Laporan Fase 1](docs/PHASE-1-REPORT.md) · [Laporan Fase 2](docs/PHASE-2-REPORT.md) · [Laporan Fase 3](docs/PHASE-3-REPORT.md) · [API](docs/API.md) · [Deploy](docs/DEPLOYMENT.md)
 
 ## Prasyarat
 - Node.js ≥ 20.11 (diuji dengan 24.4) dan pnpm 10

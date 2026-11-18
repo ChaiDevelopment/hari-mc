@@ -22,8 +22,8 @@ export class MediaController {
   @Public()
   @SkipThrottle()
   @Get(':key')
-  get(@Param('key') key: string, @Res() res: Response) {
-    const file = this.storage.open(key);
+  async get(@Param('key') key: string, @Res() res: Response) {
+    const file = await this.storage.open(key);
     if (!file) throw new NotFoundException();
     res.setHeader('Content-Type', CONTENT_TYPE[key.split('.').pop()!]);
     res.setHeader('Content-Length', String(file.size));

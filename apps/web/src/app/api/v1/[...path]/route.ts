@@ -36,6 +36,10 @@ async function proxy(req: NextRequest, ctx: Ctx) {
   req.headers.forEach((value, key) => {
     if (!HOP_BY_HOP.has(key.toLowerCase())) headers.set(key, value);
   });
+  // Di Cloudflare Workers, IP asli pengunjung ada di CF-Connecting-IP (tidak bisa dipalsukan lewat Cloudflare).
+  // Timpa X-Forwarded-For kiriman klien agar rate limit di API memakai IP sebenarnya.
+  const cfIp = req.headers.get('cf-connecting-ip');
+  if (cfIp) headers.set('x-forwarded-for', cfIp);
 
   const init: RequestInit & { duplex?: 'half' } = { method: req.method, headers, redirect: 'manual', cache: 'no-store' };
   if (req.method !== 'GET' && req.method !== 'HEAD') init.body = await req.arrayBuffer();

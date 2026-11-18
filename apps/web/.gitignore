@@ -2,3 +2,6 @@ test-results/
 playwright-report/
 .next/
 next-env.d.ts
+.open-next/
+.wrangler/
+.dev.vars

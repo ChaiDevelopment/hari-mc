@@ -10,7 +10,7 @@ Setiap fase: implementasi → jalankan → test → perbaiki → dokumentasi →
 | 4. Android | Compose/M3 project, Credential Manager login, home, booking form, my bookings, notification center, FCM, secure token storage | Berikutnya (menunggu persetujuan laporan Fase 3) |
 | 5. Business | Payments + bukti bayar, packages CRUD, portfolio + storage, Google Reviews adapter, Instagram adapter, reports + CSV | |
 | 6. QA | Unit/integration/API/E2E (Playwright 1440/768/390), Android instrumented tests, security tests | |
-| 7. Deployment | Dockerfile api/web, docker-compose prod, migrations, env guide, backup & recovery | |
+| 7. Deployment | Dockerfile api/web, docker-compose prod, migrations, env guide, backup & recovery | **Persiapan selesai** (OpenNext/Workers, Dockerfile API, driver R2, CI, panduan) — deploy menunggu akun |
 
 ## Informasi yang dibutuhkan dari pemilik (blocking untuk fitur tertentu)
 1. **Email Google milik Hari Susanto** → untuk `admin:provision`.

@@ -40,6 +40,13 @@ export const envSchema = z
     ENABLE_DEV_ADMIN_LOGIN: bool,
     /** Folder penyimpanan upload (foto profil, portfolio) untuk LocalDiskStorage. */
     STORAGE_DIR: z.string().default('./storage'),
+    /** local = disk (STORAGE_DIR); s3 = Cloudflare R2 / S3-compatible (bucket boleh privat). */
+    STORAGE_DRIVER: z.enum(['local', 's3']).default('local'),
+    S3_ENDPOINT: z.string().url().optional(),
+    S3_BUCKET: z.string().optional(),
+    S3_REGION: z.string().default('auto'),
+    S3_ACCESS_KEY_ID: z.string().optional(),
+    S3_SECRET_ACCESS_KEY: z.string().optional(),
 
     /**
      * Pengiriman email (kode masuk). 'log' = TIDAK mengirim email; isi email ditulis ke konsol server dan
@@ -59,6 +66,11 @@ export const envSchema = z
     }
     if (env.NODE_ENV === 'production' && env.ENABLE_DEV_ADMIN_LOGIN) {
       ctx.addIssue({ code: 'custom', message: 'ENABLE_DEV_ADMIN_LOGIN tidak boleh aktif di production', path: ['ENABLE_DEV_ADMIN_LOGIN'] });
+    }
+    if (env.STORAGE_DRIVER === 's3') {
+      for (const k of ['S3_ENDPOINT', 'S3_BUCKET', 'S3_ACCESS_KEY_ID', 'S3_SECRET_ACCESS_KEY'] as const) {
+        if (!env[k]) ctx.addIssue({ code: 'custom', message: `${k} wajib diisi bila STORAGE_DRIVER=s3`, path: [k] });
+      }
     }
     if (env.EMAIL_TRANSPORT === 'smtp' && !env.SMTP_HOST) {
       ctx.addIssue({ code: 'custom', message: 'SMTP_HOST wajib diisi bila EMAIL_TRANSPORT=smtp', path: ['SMTP_HOST'] });

@@ -1,0 +1,63 @@
+# CI: dijalankan pada setiap push & pull request.
+# Memverifikasi hal yang tidak bisa diuji di laptop pengembangan (Windows tanpa Docker):
+# build Cloudflare Workers (OpenNext, Linux) dan build image Docker API.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    name: API — unit & integrasi (PostgreSQL nyata)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @hmc/api exec prisma generate
+      - run: pnpm --filter @hmc/api lint:types
+      - run: pnpm api:test
+      - run: pnpm api:test:e2e
+
+  web:
+    name: Web — unit, build Next.js, build Cloudflare Workers
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @hmc/web lint:types
+      - run: pnpm web:test
+      - name: Build Cloudflare Workers (OpenNext)
+        run: pnpm --filter @hmc/web cf:build
+
+  docker:
+    name: Docker — build image API
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          push: false
+          tags: hari-mc-api:ci

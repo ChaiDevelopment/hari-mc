@@ -11,3 +11,6 @@ onlyBuiltDependencies:
   - "@embedded-postgres/linux-x64"
   - "@embedded-postgres/darwin-arm64"
   - "@embedded-postgres/darwin-x64"
+  - "workerd"
+  - "esbuild"
+  - "sharp"

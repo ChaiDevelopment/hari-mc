@@ -15,7 +15,7 @@ Product owner: Chai · Pemilik bisnis / admin: Hari Susanto
 | 4. Android | Aplikasi customer (Kotlin / Jetpack Compose) | ⏳ Berikutnya (menunggu persetujuan) |
 | 5. Fitur bisnis | Pembayaran, paket & harga, portfolio, Google Reviews, Instagram, laporan | ⬜ Belum |
 | 6. QA | Test lengkap web, Android, keamanan, tampilan di berbagai ukuran layar | ⬜ Belum |
-| 7. Deployment | Docker, panduan deploy, backup & recovery | ⬜ Belum |
+| 7. Deployment | Docker, panduan deploy, backup & recovery | 🟡 **Persiapan selesai** — menunggu akun Cloudflare/database |
 
 > **Website pelanggan** (`http://localhost:3400`) dan **CMS admin** (`http://localhost:3400/admin`) sudah bisa dibuka. Cara menjalankan ada di [README.md](README.md). Pelanggan memesan; Hari meninjau, menerima/menolak, menetapkan biaya, dan memantau kalender dari CMS.
 
@@ -41,6 +41,18 @@ Product owner: Chai · Pemilik bisnis / admin: Hari Susanto
 ### Status lingkungan saat ini
 - Semua masih berjalan **lokal di laptop pengembangan**: website `localhost:3400`, API `localhost:4100`, dan database PostgreSQL di `D:\hari\apps\api\.pgdata`. **Belum ada backup**, dan belum bisa diakses dari luar. Jangan dipakai untuk data pelanggan sungguhan.
 - **Rencana online (Fase 7, menunggu persetujuan)**: website & CMS → Cloudflare Workers; file & bukti transfer → Cloudflare R2; API → Cloudflare Containers (atau VPS/Railway); database → PostgreSQL terkelola (Neon/Supabase) via Cloudflare Hyperdrive. Database tidak dipindah ke Cloudflare D1, karena D1 tidak mendukung fitur PostgreSQL yang menjaga aturan anti double-booking.
+
+### Persiapan online (Fase 7) — 18 Nov 2026
+- [x] Kode di GitHub: **https://github.com/ChaiDevelopment/hari-mc** (privat disarankan).
+- [x] **Website + CMS siap untuk Cloudflare Workers** (adapter OpenNext, `apps/web/wrangler.jsonc`, script `cf:build` / `cf:preview` / `cf:deploy`). Build OpenNext tidak bisa di Windows tanpa Developer Mode, jadi diverifikasi di CI Linux.
+- [x] **API siap di-container-kan**: `apps/api/Dockerfile` + migration otomatis saat start. Bisa dijalankan di Cloudflare Containers, Railway, Render, Fly, atau VPS.
+- [x] **Penyimpanan file bisa memakai Cloudflare R2** (`STORAGE_DRIVER=s3`). Bucket tetap privat; foto publik dialirkan lewat API.
+- [x] **Keamanan IP di Workers**: proxy memakai `CF-Connecting-IP` sehingga rate limit tidak bisa diakali.
+- [x] **CI GitHub Actions** (test API + integrasi, build Workers, build Docker) di setiap push. **Deploy website hanya manual** (workflow *Deploy Web*).
+- [x] Panduan lengkap: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+- ⏳ Menunggu: akun Cloudflare, database (Neon/Supabase), tempat API, SMTP — lalu deploy bersama.
+
+**Test terakhir:** API unit 45/45 · API integrasi 118/118 · web unit 10/10 · browser 60/60.
 
 ### Informasi dari Google Maps
 Profil "Jasa MC Ultah Kak Hari" beralamat di **Jl. Ir. H. Juanda II Gg. Kingkit 3 No. 20, RT.10/RW.4, Kebon Kelapa, Gambir, Jakarta Pusat 10120**. Alamat ini belum ditampilkan di website; bisa diisi di CMS → Profil & Kontak bila diinginkan. Jumlah ulasan belum bisa dibaca otomatis tanpa Places API.

@@ -115,7 +115,7 @@ export class AdminSettingsController {
   @Patch('settings/profile')
   @ApiOperation({ summary: 'Ubah profil Hari & bisnis' })
   async profile(@CurrentUser() admin: AuthUser, @Body() dto: UpdateProfileDto, @Req() req: Request) {
-    if (dto.photoUrl?.startsWith(MEDIA_PREFIX) && !this.storage.exists(dto.photoUrl.slice(MEDIA_PREFIX.length))) {
+    if (dto.photoUrl?.startsWith(MEDIA_PREFIX) && !(await this.storage.exists(dto.photoUrl.slice(MEDIA_PREFIX.length)))) {
       throw new BadRequestException('Foto tidak ditemukan. Unggah ulang.');
     }
     const data = { ...dto, ...(dto.whatsappNumber ? { whatsappNumber: normalizeIndonesianPhone(dto.whatsappNumber) } : {}) };
@@ -267,13 +267,13 @@ export class AdminSettingsController {
 
   @Post('portfolio')
   async createPortfolio(@CurrentUser() admin: AuthUser, @Body() dto: PortfolioDto, @Req() req: Request) {
-    if (dto.mediaType === 'IMAGE' && (!dto.storageKey || !this.storage.exists(dto.storageKey))) {
+    if (dto.mediaType === 'IMAGE' && (!dto.storageKey || !(await this.storage.exists(dto.storageKey)))) {
       throw new BadRequestException('Unggah foto terlebih dahulu');
     }
     if (dto.mediaType === 'VIDEO' && !dto.externalUrl && !dto.storageKey) {
       throw new BadRequestException('Masukkan tautan video (https)');
     }
-    if (dto.thumbnailKey && !this.storage.exists(dto.thumbnailKey)) throw new BadRequestException('Thumbnail tidak ditemukan');
+    if (dto.thumbnailKey && !(await this.storage.exists(dto.thumbnailKey))) throw new BadRequestException('Thumbnail tidak ditemukan');
     const max = await this.prisma.portfolio.aggregate({ where: { deletedAt: null }, _max: { sortOrder: true } });
     return this.prisma.$transaction(async (tx) => {
       const p = await tx.portfolio.create({
@@ -295,7 +295,7 @@ export class AdminSettingsController {
 
   @Patch('portfolio/:id')
   async updatePortfolio(@CurrentUser() admin: AuthUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdatePortfolioDto, @Req() req: Request) {
-    if (dto.thumbnailKey && !this.storage.exists(dto.thumbnailKey)) throw new BadRequestException('Thumbnail tidak ditemukan');
+    if (dto.thumbnailKey && !(await this.storage.exists(dto.thumbnailKey))) throw new BadRequestException('Thumbnail tidak ditemukan');
     return this.prisma.$transaction(async (tx) => {
       const before = await tx.portfolio.findFirst({ where: { id, deletedAt: null } });
       if (!before) throw new NotFoundException('Konten tidak ditemukan');

@@ -333,7 +333,7 @@ export class PaymentsService {
       select: { proofs: { select: { storageKey: true, mimeType: true }, take: 1 } },
     });
     const proof = p?.proofs[0];
-    const file = proof ? this.storage.openProof(proof.storageKey) : null;
+    const file = proof ? await this.storage.openProof(proof.storageKey) : null;
     if (!proof || !file) throw new NotFoundException('Bukti pembayaran tidak ditemukan');
     return { ...file, mimeType: proof.mimeType };
   }

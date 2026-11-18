@@ -1,0 +1,15 @@
+**/node_modules
+**/dist
+**/.next
+**/.open-next
+**/.wrangler
+**/test-results
+**/playwright-report
+**/.env
+**/.env.*
+!**/.env.example
+**/.dev.vars
+apps/api/.pgdata*
+apps/api/storage
+apps/api/.storage-*
+.git
