@@ -4,7 +4,7 @@
   // Preview: pnpm --filter @hmc/web cf:preview   (runtime Workers lokal)
   // Deploy:  pnpm --filter @hmc/web cf:deploy    (atau Workers Builds dari GitHub — lihat docs/DEPLOYMENT.md)
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "hari-mc-web",
+  "name": "hari-mc",
   "main": ".open-next/worker.js",
   "compatibility_date": "2026-11-01",
   "compatibility_flags": ["nodejs_compat"],

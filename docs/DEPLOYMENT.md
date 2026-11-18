@@ -73,7 +73,7 @@ Build dari root repo: `docker build -f apps/api/Dockerfile -t hari-mc-api .`. CI
 | `DATABASE_URL` | dari Langkah 1 |
 | `JWT_ACCESS_SECRET` | acak ≥ 32 karakter: `node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"` |
 | `GOOGLE_CLIENT_IDS` | Web Client ID Google |
-| `CORS_ORIGINS` | URL website, mis. `https://hari-mc-web.<akun>.workers.dev` |
+| `CORS_ORIGINS` | URL website, mis. `https://hari-mc.<akun>.workers.dev` |
 | `COOKIE_SECURE` | `true` |
 | `TRUST_PROXY` | jumlah proxy di depan API — biasanya `2` (Worker website + proxy platform). Lihat catatan di bawah. |
 | `STORAGE_DRIVER`, `S3_*` | dari Langkah 2 |
@@ -94,7 +94,7 @@ Cek: `GET https://<api>/api/v1/health` → `{"status":"ok","database":"up"}`.
    - **GitHub Actions (disarankan)**: GitHub repo → Settings → Secrets → tambah `CLOUDFLARE_API_TOKEN` (izin *Workers Scripts: Edit*) dan `CLOUDFLARE_ACCOUNT_ID` → Actions → **Deploy Web (Cloudflare Workers)** → *Run workflow*. Deploy hanya terjadi saat dijalankan manual.
    - **Workers Builds (dashboard Cloudflare)**: Workers → Create → Import repository `ChaiDevelopment/hari-mc` → Root directory `apps/web` → Build command `pnpm install --frozen-lockfile && pnpm cf:build` → Deploy command `pnpm exec opennextjs-cloudflare deploy`.
    - **Dari komputer Linux/WSL**: `pnpm --filter @hmc/web cf:deploy` (build OpenNext gagal di Windows tanpa Developer Mode karena butuh symlink).
-3. Hasil: `https://hari-mc-web.<akun>.workers.dev`.
+3. Hasil: `https://hari-mc.<akun>.workers.dev`.
 
 ## Langkah 5 — Google & pengecekan akhir
 1. Google Cloud → Clients → Web client → **Authorized JavaScript origins** → tambah URL website produksi.
